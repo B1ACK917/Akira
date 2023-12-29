@@ -1,0 +1,24 @@
+[package]
+name = "Akira"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[build-dependencies]
+cmake = "0.1.50"
+cxx-build = "1.0.111"
+
+[dependencies]
+async-stream = "0.3.5"
+async-trait = "0.1.75"
+cxx = "1.0.111"
+dashmap = "5.5.3"
+derive_builder = "0.12.0"
+futures = "0.3.30"
+regex = "1.10.2"
+tokio = { version = "1.35.1", features = ["sync", "rt", "rt-multi-thread", "macros"] }
+
+[features]
+default = ["cuda"]
+cuda = []
