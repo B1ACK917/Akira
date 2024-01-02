@@ -12,7 +12,8 @@ fn check_llama_cpp_cloned() {
 
 fn build_llama_cpp() {
     let mut config = cmake::Config::new("llama.cpp");
-    if cfg!(target_os = "macos") {
+    if cfg!(feature = "metal") {
+        println!("METAL Feature Enabled");
         config.define("LLAMA_METAL", "ON");
         println!("cargo:rustc-link-lib=framework=Foundation");
         println!("cargo:rustc-link-lib=framework=Accelerate");

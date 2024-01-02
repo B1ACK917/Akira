@@ -9,8 +9,8 @@
 #include <ggml.h>
 #include <llama.h>
 
-#include "Akira/src/include/engine.h"
-#include "Akira/src/lib.rs.h"
+#include "akira/src/include/engine.h"
+#include "akira/src/lib.rs.h"
 
 namespace llama {
 TextInferenceEngine::~TextInferenceEngine() {}

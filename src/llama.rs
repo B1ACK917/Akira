@@ -9,7 +9,6 @@ use crate::ffi;
 struct LlamaInitRequest {
     prompt: String,
     max_input_length: usize,
-
     tx: Sender<String>,
 }
 

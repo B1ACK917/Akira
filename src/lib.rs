@@ -1,14 +1,14 @@
-mod llama;
-pub mod decoding;
-
 use std::process::exit;
+
 use async_stream::stream;
 use async_trait::async_trait;
 use derive_builder::Builder;
-use ffi::create_engine;
 use futures::stream::BoxStream;
-use llama::LlamaService;
-use decoding::{helpers, TextGeneration, TextGenerationOptions};
+
+use ffi::create_engine;
+use llama::*;
+
+pub mod llama;
 
 #[cxx::bridge(namespace = "llama")]
 mod ffi {
@@ -18,7 +18,7 @@ mod ffi {
     }
 
     unsafe extern "C++" {
-        include!("Akira/src/include/engine.h");
+        include!("akira/src/include/engine.h");
 
         type TextInferenceEngine;
 
@@ -44,18 +44,18 @@ unsafe impl Send for ffi::TextInferenceEngine {}
 unsafe impl Sync for ffi::TextInferenceEngine {}
 
 #[derive(Builder, Debug)]
-pub struct LlamaTextGenerationOptions {
+pub struct LlamaGenerationOptions {
     model_path: String,
     use_gpu: bool,
     parallelism: u8,
 }
 
-pub struct LlamaTextGeneration {
+pub struct LlamaGeneration {
     service: LlamaService,
 }
 
-impl LlamaTextGeneration {
-    pub fn new(options: LlamaTextGenerationOptions) -> Self {
+impl LlamaGeneration {
+    pub fn new(options: LlamaGenerationOptions) -> Self {
         let engine = create_engine(options.use_gpu, &options.model_path, options.parallelism);
         if engine.is_null() {
             println!("Unable to load model: {}", options.model_path);
@@ -69,7 +69,7 @@ impl LlamaTextGeneration {
 }
 
 #[async_trait]
-impl TextGeneration for LlamaTextGeneration {
+impl TextGeneration for LlamaGeneration {
     async fn generate(&self, prompt: &str, options: TextGenerationOptions) -> String {
         let s = self.generate_stream(prompt, options).await;
         let text = helpers::stream_to_string(s).await;
@@ -95,5 +95,51 @@ impl TextGeneration for LlamaTextGeneration {
         };
 
         Box::pin(s)
+    }
+}
+
+#[derive(Builder, Debug)]
+pub struct TextGenerationOptions {
+    #[builder(default = "1024")]
+    pub max_input_length: usize,
+
+    #[builder(default = "256")]
+    pub max_decoding_length: usize,
+
+    #[builder(default = "1.0")]
+    pub sampling_temperature: f32,
+}
+
+#[async_trait]
+pub trait TextGeneration: Sync + Send {
+    async fn generate(&self, prompt: &str, options: TextGenerationOptions) -> String;
+    async fn generate_stream(
+        &self,
+        prompt: &str,
+        options: TextGenerationOptions,
+    ) -> BoxStream<String>;
+}
+
+pub mod helpers {
+    use async_stream::stream;
+    use futures::{pin_mut, Stream, stream::BoxStream, StreamExt};
+
+    pub async fn stream_to_string(s: impl Stream<Item=String>) -> String {
+        pin_mut!(s);
+
+        let mut text = "".to_owned();
+        while let Some(value) = s.next().await {
+            text += &value;
+        }
+
+        text
+    }
+
+    pub async fn string_to_stream(s: String) -> BoxStream<'static, String> {
+        let stream = stream! {
+            yield s
+        };
+
+        Box::pin(stream)
     }
 }
